@@ -12,7 +12,7 @@
       rel="stylesheet"
       href="https://unicons.iconscout.com/release/v4.0.0/css/line.css"
     />
-    <script src="script.js" defer></script>
+    <script src="./script.js" defer></script>
   </head>
   <body>
     <nav class="nav">
@@ -39,64 +39,155 @@
         <h1>Voice Powered Automation</h1>
 
         <div class="button-container">
-          <button class="button">+ New Order</button>
-          <button class="button">Create With Voice</button>
+          <button id="newOrderBtn" class="button">+ New Order</button>
+          <button class="button">
+            <i class="uil uil-microphone"></i>
+            Create With Voice
+          </button>
+        </div>
+      </div>
+
+      <!-- metrics -->
+      <div class="dashboard-metrics">
+        <div class="metric">
+          <i class="uil uil-clipboard-alt"></i>
+          <div>
+            <h3>Total Orders</h3>
+            <p>1,294 <span class="increase">+12.5%</span></p>
+          </div>
+        </div>
+
+        <div class="metric">
+          <i class="uil uil-clock"></i>
+          <div>
+            <h3>Pending Approval</h3>
+            <p>48 <span class="warning">Needs Action</span></p>
+          </div>
+        </div>
+
+        <div class="metric">
+          <i class="uil uil-microphone"></i>
+          <div>
+            <h3>Voice Accuracy</h3>
+            <p>96.7% <span class="increase">+2.4%</span></p>
+          </div>
+        </div>
+
+        <div class="metric">
+          <i class="uil uil-dollar-sign"></i>
+          <div>
+            <h3>Total Savings</h3>
+            <p>$48,397 <span class="increase">+8.2%</span></p>
+          </div>
         </div>
       </div>
 
       <!-- table div -->
       <div class="table-container">
         <div class="table-title">Recent Purchase Orders</div>
+        <!-- <table>
+          <thead>
+            <tr>
+              <th>Product Name</th>
+              <th>Brand</th>
+              <th>Category</th>
+              <th>Size</th>
+              <th>Color</th>
+              <th>Quantity</th>
+              <th>Price (Rs)</th>
+              <th>Date of Order</th>
+              <th>Status of Order</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>T-Shirt</td>
+              <td>Nike</td>
+              <td>Men's</td>
+              <td>M</td>
+              <td>Black</td>
+              <td>50</td>
+              <td>799</td>
+              <td>2024-03-01</td>
+              <td><span class="status completed">Completed</span></td>
+            </tr>
+            <tr>
+              <td>Jeans</td>
+              <td>Levi's</td>
+              <td>Unisex</td>
+              <td>L</td>
+              <td>Blue</td>
+              <td>30</td>
+              <td>2499</td>
+              <td>2024-03-05</td>
+              <td><span class="status pending">Pending</span></td>
+            </tr>
+            <tr>
+              <td>Hoodie</td>
+              <td>Adidas</td>
+              <td>Women's</td>
+              <td>S</td>
+              <td>Red</td>
+              <td>40</td>
+              <td>1999</td>
+              <td>2024-03-06</td>
+              <td><span class="status cancelled">Cancelled</span></td>
+            </tr>
+          </tbody>
+        </table> -->
         <table>
-        <thead>
-  <tr>
-    <th>Product Name</th>
-    <th>Brand</th>
-    <th>Category</th>
-    <th>Size</th>
-    <th>Color</th>
-    <th>Quantity</th>
-    <th>Price (Rs)</th>
-    <th>Date of Order</th>
-    <th>Status of Order</th>
-  </tr>
-</thead>
-<tbody>
-  <tr>
-    <td>T-Shirt</td>
-    <td>Nike</td>
-    <td>Men's</td>
-    <td>M</td>
-    <td>Black</td>
-    <td>50</td>
-    <td>799</td>
-    <td>2024-03-01</td>
-    <td><span class="status completed">Completed</span></td>
-  </tr>
-  <tr>
-    <td>Jeans</td>
-    <td>Levi's</td>
-    <td>Unisex</td>
-    <td>L</td>
-    <td>Blue</td>
-    <td>30</td>
-    <td>2499</td>
-    <td>2024-03-05</td>
-    <td><span class="status pending">Pending</span></td>
-  </tr>
-  <tr>
-    <td>Hoodie</td>
-    <td>Adidas</td>
-    <td>Women's</td>
-    <td>S</td>
-    <td>Red</td>
-    <td>40</td>
-    <td>1999</td>
-    <td>2024-03-06</td>
-    <td><span class="status cancelled">Cancelled</span></td>
-  </tr>
-</tbody>
-
+          <thead>
+            <tr>
+              <th>Product Name</th>
+              <th>Brand</th>
+              <th>Category</th>
+              <th>Size</th>
+              <th>Color</th>
+              <th>Quantity</th>
+              <th>Price (Rs)</th>
+              <th>Date of Order</th>
+              <th>Status of Order</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="clothingTable">
+            <tr>
+              <td>T-Shirt</td>
+              <td>Nike</td>
+              <td>Men's</td>
+              <td>M</td>
+              <td>Black</td>
+              <td>50</td>
+              <td>799</td>
+              <td>2024-03-01</td>
+              <td><span class="status completed">Completed</span></td>
+              <td><button class="delete-btn">Delete</button></td>
+            </tr>
+            <tr>
+              <td>Jeans</td>
+              <td>Levi's</td>
+              <td>Unisex</td>
+              <td>L</td>
+              <td>Blue</td>
+              <td>30</td>
+              <td>2499</td>
+              <td>2024-03-05</td>
+              <td><span class="status pending">Pending</span></td>
+              <td><button class="delete-btn">Delete</button></td>
+            </tr>
+            <tr>
+              <td>Hoodie</td>
+              <td>Adidas</td>
+              <td>Women's</td>
+              <td>S</td>
+              <td>Red</td>
+              <td>40</td>
+              <td>1999</td>
+              <td>2024-03-06</td>
+              <td><span class="status cancelled">Cancelled</span></td>
+              <td><button class="delete-btn">Delete</button></td>
+            </tr>
+          </tbody>
         </table>
       </div>
     </main>

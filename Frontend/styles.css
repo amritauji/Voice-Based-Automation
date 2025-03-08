@@ -50,7 +50,7 @@ a {
 }
 
 .nav .nav-links {
-  column-gap: 20px;
+  column-gap: 30px;
   list-style: none;
 }
 
@@ -324,4 +324,50 @@ tbody tr:hover td {
 .cancelled {
   background-color: #dc3545;
   color: white;
+}
+
+
+/* metrics */
+.dashboard-metrics {
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+  padding: 20px;
+  width: 50%;
+  margin-left: 30px;
+}
+
+.metric {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fff;
+  padding: 15px;
+  border-radius: 10px;
+  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+}
+
+.metric i {
+  font-size: 24px;
+  color: #6c5ce7;
+}
+
+.metric h3 {
+  font-size: 16px;
+  margin: 0;
+}
+
+.metric p {
+  font-size: 14px;
+  margin: 0;
+}
+
+.increase {
+  color: green;
+  font-weight: bold;
+}
+
+.warning {
+  color: orange;
+  font-weight: bold;
 }
