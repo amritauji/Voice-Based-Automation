@@ -371,3 +371,13 @@ tbody tr:hover td {
   color: orange;
   font-weight: bold;
 }
+
+
+
+
+
+.null-count {
+  font-size: 14px;
+  color: red;
+  margin-top: 5px;
+}

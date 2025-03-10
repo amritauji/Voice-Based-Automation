@@ -72,3 +72,48 @@ document.querySelectorAll(".delete-btn").forEach((button) => {
     this.parentElement.parentElement.remove();
   });
 });
+
+
+//  function to capture voice input and send it to the backend.
+const voiceOrderBtn = document.getElementById("voiceOrderBtn");
+
+voiceOrderBtn.addEventListener("click", () => {
+  const recognition = new (window.SpeechRecognition ||
+    window.webkitSpeechRecognition)();
+  recognition.lang = "en-US";
+  recognition.start();
+
+  recognition.onresult = async (event) => {
+    const transcript = event.results[0][0].transcript;
+    console.log("Recognized:", transcript);
+
+    // Send transcript to backend for processing
+    const response = await fetch("http://127.0.0.1:8000/process_order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: transcript }),
+    });
+
+    const data = await response.json();
+    console.log("Processed Data:", data);
+    updateTable(data);
+  };
+});
+
+function updateTable(order) {
+  const table = document.getElementById("clothingTable");
+  const newRow = document.createElement("tr");
+  newRow.innerHTML = `
+        <td>${order.product || "N/A"}</td>
+        <td>${order.brand || "N/A"}</td>
+        <td>${order.category || "N/A"}</td>
+        <td>${order.size || "N/A"}</td>
+        <td>${order.color || "N/A"}</td>
+        <td>${order.quantity || "N/A"}</td>
+        <td>${order.price || "N/A"}</td>
+        <td>${new Date().toISOString().split("T")[0]}</td>
+        <td><span class="status pending">Pending</span></td>
+        <td><button class="delete-btn">Delete</button></td>
+    `;
+  table.appendChild(newRow);
+}
