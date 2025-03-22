@@ -31,7 +31,7 @@ Before you begin, ensure you have the following installed:
 ## Setup Instructions
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/your-username/voice-based-automation.git
+git clone https://github.com/amritauji/Voice-Based-Automation.git
 cd voice-based-automation
 ```
 
