@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -44,6 +43,9 @@
             <i class="uil uil-microphone"></i> Create With Voice
           </button>
         </div>
+        <div id="output">Your speech will appear here...</div>
+        <button id="saveBtn" disabled>Save</button>
+        <button id="discardBtn" disabled>Discard</button>
       </div>
 
       <!-- metrics -->
@@ -100,42 +102,7 @@
             </tr>
           </thead>
           <tbody id="clothingTable">
-            <tr>
-              <td>T-Shirt</td>
-              <td>Nike</td>
-              <td>Men's</td>
-              <td>M</td>
-              <td>Black</td>
-              <td>50</td>
-              <td>799</td>
-              <td>2024-03-01</td>
-              <td><span class="status completed">Completed</span></td>
-              <td><button class="delete-btn">Delete</button></td>
-            </tr>
-            <tr>
-              <td>Jeans</td>
-              <td>Levi's</td>
-              <td>Unisex</td>
-              <td>L</td>
-              <td>Blue</td>
-              <td>30</td>
-              <td>2499</td>
-              <td>2024-03-05</td>
-              <td><span class="status pending">Pending</span></td>
-              <td><button class="delete-btn">Delete</button></td>
-            </tr>
-            <tr>
-              <td>Hoodie</td>
-              <td>Adidas</td>
-              <td>Women's</td>
-              <td>S</td>
-              <td>Red</td>
-              <td>40</td>
-              <td>1999</td>
-              <td>2024-03-06</td>
-              <td><span class="status cancelled">Cancelled</span></td>
-              <td><button class="delete-btn">Delete</button></td>
-            </tr>
+            <!-- Rows will be populated dynamically -->
           </tbody>
         </table>
       </div>
