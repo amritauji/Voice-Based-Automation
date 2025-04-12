@@ -427,45 +427,120 @@ function resetUI() {
 
 
 // Voice Recognition Logic
+let recognition;
+let capturedText = "";
 let currentOrder = null;
 
-recognition.onresult = (event) => {
-  capturedText = event.results[0][0].transcript;
-  document.getElementById("output").innerText = capturedText;
-  document.querySelector(".voice-section").classList.remove("listening");
+function initVoiceRecognition() {
+  if ('webkitSpeechRecognition' in window) {
+    recognition = new webkitSpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
 
-  currentOrder = parseSpeech(capturedText.toLowerCase());
-  if (currentOrder) {
-    document.getElementById("saveVoiceBtn").disabled = false;
-    document.getElementById("discardVoiceBtn").disabled = false;
+    recognition.onstart = function() {
+      document.getElementById('output').textContent = "Listening...";
+      document.querySelector('.voice-section').classList.add('listening');
+    };
+
+    recognition.onresult = function(event) {
+      capturedText = event.results[0][0].transcript;
+      document.getElementById('output').textContent = capturedText;
+      document.querySelector('.voice-section').classList.remove('listening');
+      
+      currentOrder = parseSpeech(capturedText.toLowerCase());
+      if (currentOrder) {
+        document.getElementById('saveBtn').disabled = false;
+        document.getElementById('discardBtn').disabled = false;
+      }
+    };
+
+    recognition.onerror = function(event) {
+      console.error('Speech recognition error:', event.error);
+      document.getElementById('output').textContent = 'Error: ' + event.error;
+      resetVoiceUI();
+    };
+  } else {
+    alert('Web Speech API is not supported in this browser');
   }
-};
+}
 
-// Save Voice Order
-document.getElementById("saveVoiceBtn").addEventListener("click", () => {
-  if (!currentOrder) return;
+function parseSpeech(text) {
+  // Example: "Order 5 Nike t-shirts size large in blue for 2000 rupees"
+  const pattern = /order (\d+) (.+?) (?:size|for size) (.+?) (?:in|color) (.+?) (?:for|price) (\d+)/i;
+  const match = text.match(pattern);
+
+  if (match) {
+    return {
+      product_name: match[2].trim(),
+      brand_name: "Unknown", // You can modify this to capture brand if needed
+      category: "Clothing",
+      size: match[3].trim(),
+      color: match[4].trim(),
+      quantity: parseInt(match[1]),
+      price: parseFloat(match[5]),
+      date_of_order: new Date().toISOString().split('T')[0],
+      status: 'Pending'
+    };
+  }
   
-  // Add timestamp to order
-  currentOrder.date_of_order = new Date().toISOString().split('T')[0];
-  currentOrder.status = "Pending";
-  
-  fetch("http://localhost:4000/save-order", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+  alert("Couldn't understand the order. Please try format: 'Order [quantity] [product] size [size] in [color] for [price]'");
+  return null;
+}
+
+function saveVoiceOrder() {
+  if (!currentOrder) {
+    alert('No valid order to save!');
+    return;
+  }
+
+  fetch('http://localhost:4000/save-order', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
     body: JSON.stringify(currentOrder)
   })
-  .then(response => response.json())
+  .then(response => {
+    if (!response.ok) throw new Error('Failed to save order');
+    return response.json();
+  })
   .then(data => {
-    alert("Order saved successfully!");
+    alert(`Order saved successfully! ID: ${data.orderId}`);
     resetVoiceUI();
     fetchAndDisplayProducts();
-    // Show the save button in table actions
-    document.getElementById("saveTableBtn").style.display = "inline-block";
   })
   .catch(error => {
-    console.error("Error saving order:", error);
-    alert("Failed to save order");
+    console.error('Error saving order:', error);
+    alert('Failed to save order. Please check console for details.');
   });
+}
+
+function resetVoiceUI() {
+  document.getElementById('output').textContent = 'Your speech will appear here...';
+  document.getElementById('saveBtn').disabled = true;
+  document.getElementById('discardBtn').disabled = true;
+  capturedText = "";
+  currentOrder = null;
+  if (recognition) recognition.stop();
+}
+
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize voice recognition
+  initVoiceRecognition();
+  
+  // Set up event listeners
+  document.getElementById('voiceOrderBtn').addEventListener('click', function() {
+    if (!recognition) initVoiceRecognition();
+    recognition.start();
+  });
+  
+  document.getElementById('saveBtn').addEventListener('click', saveVoiceOrder);
+  document.getElementById('discardBtn').addEventListener('click', resetVoiceUI);
+  
+  // Load initial products
+  fetchAndDisplayProducts();
 });
 
 // Save Table Order (for final submission)

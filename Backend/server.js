@@ -63,7 +63,6 @@ app.post("/save-text", (req, res) => {
 
 app.listen(4000, () => console.log("Server running on port 4000"));
 
-
 // API Route to Fetch Data
 app.get("/get-products", (req, res) => {
   const selectQuery = "SELECT * FROM products";
@@ -91,11 +90,10 @@ app.delete("/delete-product/:id", (req, res) => {
   });
 });
 
-
 // API Route for Bulk Updates
-app.post('/update-products', (req, res) => {
+app.post("/update-products", (req, res) => {
   const { updates } = req.body;
-  
+
   if (!updates || !Array.isArray(updates)) {
     return res.status(400).json({ message: "Invalid update data" });
   }
@@ -103,10 +101,10 @@ app.post('/update-products', (req, res) => {
   let completedUpdates = 0;
   const errors = [];
 
-  updates.forEach(update => {
+  updates.forEach((update) => {
     const { id, changes } = update;
     const updateQuery = `UPDATE products SET ? WHERE id = ?`;
-    
+
     db.query(updateQuery, [changes, id], (err, results) => {
       if (err) {
         console.error(`Error updating product ${id}:`, err);
@@ -114,16 +112,18 @@ app.post('/update-products', (req, res) => {
       } else {
         completedUpdates++;
       }
-      
+
       // When all updates are processed
       if (completedUpdates + errors.length === updates.length) {
         if (errors.length > 0) {
-          res.status(207).json({ 
+          res.status(207).json({
             message: `Updated ${completedUpdates} products, failed on ${errors.length}`,
-            failedUpdates: errors
+            failedUpdates: errors,
           });
         } else {
-          res.json({ message: `Successfully updated ${completedUpdates} products` });
+          res.json({
+            message: `Successfully updated ${completedUpdates} products`,
+          });
         }
       }
     });
@@ -131,48 +131,52 @@ app.post('/update-products', (req, res) => {
 });
 
 // Save Initial Order
-app.post('/save-order', (req, res) => {
+app.post("/save-order", (req, res) => {
   const orderData = req.body;
   orderData.status = "Pending"; // Default status
-  
+
   const query = `
     INSERT INTO orders 
     (product_name, brand_name, category, size, color, quantity, price, date_of_order, status)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
-  
-  db.query(query, [
-    orderData.product_name,
-    orderData.brand_name,
-    orderData.category,
-    orderData.size,
-    orderData.color,
-    orderData.quantity,
-    orderData.price,
-    orderData.date_of_order,
-    orderData.status
-  ], (err, results) => {
-    if (err) {
-      console.error("Error saving order:", err);
-      return res.status(500).json({ message: "Error saving order" });
+
+  db.query(
+    query,
+    [
+      orderData.product_name,
+      orderData.brand_name,
+      orderData.category,
+      orderData.size,
+      orderData.color,
+      orderData.quantity,
+      orderData.price,
+      orderData.date_of_order,
+      orderData.status,
+    ],
+    (err, results) => {
+      if (err) {
+        console.error("Error saving order:", err);
+        return res.status(500).json({ message: "Error saving order" });
+      }
+      res.json({
+        message: "Order saved successfully",
+        orderId: results.insertId,
+      });
     }
-    res.json({ 
-      message: "Order saved successfully",
-      orderId: results.insertId
-    });
-  });
+  );
 });
 
 // Finalize Order
-app.post('/finalize-order', (req, res) => {
+app.post("/finalize-order", (req, res) => {
   const { orderId } = req.body;
-  
+
   const query = `
     UPDATE orders 
     SET status = 'Completed'
     WHERE id = ?
   `;
-  
+
   db.query(query, [orderId], (err, results) => {
     if (err) {
       console.error("Error finalizing order:", err);
@@ -183,9 +187,9 @@ app.post('/finalize-order', (req, res) => {
 });
 
 // Get Orders for Orders Page
-app.get('/get-orders', (req, res) => {
+app.get("/get-orders", (req, res) => {
   const query = "SELECT * FROM orders ORDER BY date_of_order DESC";
-  
+
   db.query(query, (err, results) => {
     if (err) {
       console.error("Error fetching orders:", err);
@@ -193,4 +197,45 @@ app.get('/get-orders', (req, res) => {
     }
     res.json(results);
   });
+});
+
+// Update this endpoint to match
+app.post("/save-order", (req, res) => {
+  const orderData = req.body;
+
+  // Validate required fields
+  if (!orderData.product_name || !orderData.quantity || !orderData.price) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  const query = `
+    INSERT INTO products 
+    (product_name, brand_name, category, size, color, quantity, price, date_of_order, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+
+  db.query(
+    query,
+    [
+      orderData.product_name,
+      orderData.brand_name || "Unknown",
+      orderData.category || "Clothing",
+      orderData.size || "M",
+      orderData.color || "Unknown",
+      orderData.quantity,
+      orderData.price,
+      orderData.date_of_order || new Date().toISOString().split("T")[0],
+      orderData.status || "Pending",
+    ],
+    (err, results) => {
+      if (err) {
+        console.error("Database error:", err);
+        return res.status(500).json({ error: "Failed to save order" });
+      }
+      res.json({
+        message: "Order saved successfully",
+        orderId: results.insertId,
+      });
+    }
+  );
 });
