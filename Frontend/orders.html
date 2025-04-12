@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order History | Voice Automation</title>
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="https://unicons.iconscout.com/release/v4.0.0/css/line.css">
+</head>
+<body>
+  <nav class="nav">
+      <i class="uil uil-bars navOpenBtn"></i>
+      <a href="#" class="logo">Voice Automation</a>
+      <ul class="nav-links">
+        <i class="uil uil-times navCloseBtn"></i>
+        <li><a href="/Frontend/index.html">Home</a></li>
+        <li><a href="#">Dashboard</a></li>
+        <li><a href="/Frontend/orders.html">Orders</a></li>
+        <li><a href="#">Suppliers</a></li>
+        <li><a href="#">Help</a></li>
+      </ul>
+      <i class="uil uil-search search-icon" id="searchIcon"></i>
+      <div class="search-box">
+        <i class="uil uil-search search-icon"></i>
+        <input type="text" placeholder="Search here..." />
+      </div>
+    </nav>
+
+
+  <main class="orders-main">
+    <div class="orders-header">
+      <h1><i class="uil uil-clipboard-notes"></i> Order History</h1>
+      <div class="orders-filter">
+        <select id="statusFilter">
+          <option value="all">All Orders</option>
+          <option value="completed">Completed</option>
+          <option value="pending">Pending</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+        <input type="date" id="dateFilter" placeholder="Filter by date">
+      </div>
+    </div>
+
+    <div class="orders-stats">
+      <div class="stat-card">
+        <i class="uil uil-shopping-cart-alt"></i>
+        <div>
+          <h3>Total Orders</h3>
+          <p id="totalOrders">0</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <i class="uil uil-check-circle"></i>
+        <div>
+          <h3>Completed</h3>
+          <p id="completedOrders">0</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <i class="uil uil-clock"></i>
+        <div>
+          <h3>Pending</h3>
+          <p id="pendingOrders">0</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <i class="uil uil-money-bill"></i>
+        <div>
+          <h3>Total Value</h3>
+          <p id="totalValue">₹0</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="orders-list" id="ordersList">
+      <!-- Orders will be dynamically inserted here -->
+      <div class="no-orders">
+        <i class="uil uil-clipboard-blank"></i>
+        <p>No orders found</p>
+      </div>
+    </div>
+  </main>
+
+  <script src="/Frontend/order.js"></script>
+</body>
+</html>

@@ -90,3 +90,107 @@ app.delete("/delete-product/:id", (req, res) => {
     res.json({ message: "Product deleted successfully" });
   });
 });
+
+
+// API Route for Bulk Updates
+app.post('/update-products', (req, res) => {
+  const { updates } = req.body;
+  
+  if (!updates || !Array.isArray(updates)) {
+    return res.status(400).json({ message: "Invalid update data" });
+  }
+
+  let completedUpdates = 0;
+  const errors = [];
+
+  updates.forEach(update => {
+    const { id, changes } = update;
+    const updateQuery = `UPDATE products SET ? WHERE id = ?`;
+    
+    db.query(updateQuery, [changes, id], (err, results) => {
+      if (err) {
+        console.error(`Error updating product ${id}:`, err);
+        errors.push(id);
+      } else {
+        completedUpdates++;
+      }
+      
+      // When all updates are processed
+      if (completedUpdates + errors.length === updates.length) {
+        if (errors.length > 0) {
+          res.status(207).json({ 
+            message: `Updated ${completedUpdates} products, failed on ${errors.length}`,
+            failedUpdates: errors
+          });
+        } else {
+          res.json({ message: `Successfully updated ${completedUpdates} products` });
+        }
+      }
+    });
+  });
+});
+
+// Save Initial Order
+app.post('/save-order', (req, res) => {
+  const orderData = req.body;
+  orderData.status = "Pending"; // Default status
+  
+  const query = `
+    INSERT INTO orders 
+    (product_name, brand_name, category, size, color, quantity, price, date_of_order, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+  
+  db.query(query, [
+    orderData.product_name,
+    orderData.brand_name,
+    orderData.category,
+    orderData.size,
+    orderData.color,
+    orderData.quantity,
+    orderData.price,
+    orderData.date_of_order,
+    orderData.status
+  ], (err, results) => {
+    if (err) {
+      console.error("Error saving order:", err);
+      return res.status(500).json({ message: "Error saving order" });
+    }
+    res.json({ 
+      message: "Order saved successfully",
+      orderId: results.insertId
+    });
+  });
+});
+
+// Finalize Order
+app.post('/finalize-order', (req, res) => {
+  const { orderId } = req.body;
+  
+  const query = `
+    UPDATE orders 
+    SET status = 'Completed'
+    WHERE id = ?
+  `;
+  
+  db.query(query, [orderId], (err, results) => {
+    if (err) {
+      console.error("Error finalizing order:", err);
+      return res.status(500).json({ message: "Error finalizing order" });
+    }
+    res.json({ message: "Order finalized successfully" });
+  });
+});
+
+// Get Orders for Orders Page
+app.get('/get-orders', (req, res) => {
+  const query = "SELECT * FROM orders ORDER BY date_of_order DESC";
+  
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("Error fetching orders:", err);
+      return res.status(500).json({ message: "Error fetching orders" });
+    }
+    res.json(results);
+  });
+});

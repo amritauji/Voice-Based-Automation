@@ -21,7 +21,7 @@
         <i class="uil uil-times navCloseBtn"></i>
         <li><a href="#">Home</a></li>
         <li><a href="#">Dashboard</a></li>
-        <li><a href="#">Orders</a></li>
+        <li><a href="/Frontend/orders.html">Orders</a></li>
         <li><a href="#">Suppliers</a></li>
         <li><a href="#">Help</a></li>
       </ul>
@@ -33,19 +33,29 @@
     </nav>
 
     <main>
-      <!-- Button Container -->
-      <div class="header-container">
-        <h1>Voice Powered Automation</h1>
+      <!-- In the header-container -->
 
-        <div class="button-container">
-          <button id="newOrderBtn" class="button">+ New Order</button>
-          <button id="voiceOrderBtn" class="button">
+      <!-- Voice Input Section -->
+      <div class="voice-section">
+        <div class="voice-controls">
+          <!-- Only one instance of voiceOrderBtn -->
+          <button id="voiceOrderBtn" class="button voice-control-btn">
             <i class="uil uil-microphone"></i> Create With Voice
           </button>
+          <button id="saveVoiceBtn" class="voice-btn save-voice-btn" disabled>
+            <i class="uil uil-save"></i> Save Voice Order
+          </button>
+          <button
+            id="discardVoiceBtn"
+            class="voice-btn discard-voice-btn"
+            disabled
+          >
+            <i class="uil uil-trash-alt"></i> Discard
+          </button>
         </div>
-        <div id="output">Your speech will appear here...</div>
-        <button id="saveBtn" disabled>Save</button>
-        <button id="discardBtn" disabled>Discard</button>
+        <div class="voice-output-box" id="output">
+          Your speech will appear here...
+        </div>
       </div>
 
       <!-- metrics -->
@@ -85,7 +95,24 @@
 
       <!-- table div -->
       <div class="table-container">
-        <div class="table-title">Recent Purchase Orders</div>
+        <div class="table-title-container">
+          <div class="table-title">Recent Purchase Orders</div>
+          <div class="table-actions">
+            <button id="editTableBtn" class="action-btn edit-btn">
+              <i class="uil uil-edit"></i> Edit Table
+            </button>
+            <button
+              id="saveTableBtn"
+              class="action-btn save-btn"
+              style="display: none"
+            >
+              <i class="uil uil-save"></i> Save Order
+            </button>
+            <button id="exportTableBtn" class="action-btn export-btn">
+              <i class="uil uil-file-alt"></i> Export CSV
+            </button>
+          </div>
+        </div>
         <table>
           <thead>
             <tr>
