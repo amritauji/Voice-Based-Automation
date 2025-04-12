@@ -39,14 +39,14 @@
       <div class="voice-section">
         <div class="voice-controls">
           <button id="voiceOrderBtn" class="button voice-control-btn">
-            <i class="uil uil-microphone"></i> Create With Voice
+            <i class="uil uil-microphone"></i> Start Continuous Orders
           </button>
-          <button id="saveBtn" class="voice-btn save-voice-btn" disabled>
-            <i class="uil uil-save"></i> Save Voice Order
-          </button>
-          <button id="discardBtn" class="voice-btn discard-voice-btn" disabled>
-            <i class="uil uil-trash-alt"></i> Discard
-          </button>
+          <div class="voice-timer" id="voiceTimer" style="display: none">
+            <div class="timer-circle"><span id="timerValue">10</span>s</div>
+            <div class="orders-counter">
+              Orders captured: <span id="ordersCounter">0</span>
+            </div>
+          </div>
         </div>
         <div class="voice-output-box" id="output">
           Your speech will appear here...

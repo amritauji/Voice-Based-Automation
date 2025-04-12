@@ -1,241 +1,141 @@
-const mysql = require("mysql2"); // Use mysql2 instead of mysql
+const mysql = require("mysql2/promise");
 const express = require("express");
-const bodyParser = require("body-parser");
 const cors = require("cors");
 
 const app = express();
 app.use(cors());
-app.use(bodyParser.json());
+app.use(express.json());
 
-// MySQL Connection
-const db = mysql.createConnection({
-  host: "localhost", // Use 'localhost' for local MySQL
-  user: "root", // Replace with your MySQL username
-  password: "admin", // Replace with your MySQL password
-  database: "clothing_store", // Replace with your database name
+// MySQL Connection Pool
+const pool = mysql.createPool({
+  host: "localhost",
+  user: "root",
+  password: "admin",
+  database: "clothing_store",
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
 });
 
-db.connect((err) => {
-  if (err) {
-    console.error("Database connection failed:", err);
-    return;
+// Initialize database
+async function initializeDatabase() {
+  try {
+    // Drop existing table if it has wrong schema
+    await pool.query("DROP TABLE IF EXISTS products");
+
+    // Create new table with correct schema
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS products (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        product_name VARCHAR(255) NOT NULL,
+        brand_name VARCHAR(255) DEFAULT 'Unknown',
+        category VARCHAR(255) DEFAULT 'Clothing',
+        size VARCHAR(50) DEFAULT 'M',
+        color VARCHAR(50) DEFAULT 'Unknown',
+        quantity INT NOT NULL,
+        price DECIMAL(10,2) NOT NULL,
+        date_of_order DATE DEFAULT (CURRENT_DATE()),
+        status VARCHAR(50) DEFAULT 'Pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log("Database initialized successfully");
+  } catch (err) {
+    console.error("Database initialization failed:", err);
   }
-  console.log("Connected to MySQL");
-});
+}
 
-// API Route to Save Data
-app.post("/save-text", (req, res) => {
-  const { product_name, brand_name, category, size, color, quantity, price } =
-    req.body;
-
-  console.log("Received data:", req.body); // Log the received data
-
-  // Validate required fields
-  if (
-    !product_name ||
-    !brand_name ||
-    !category ||
-    !size ||
-    !color ||
-    !quantity ||
-    !price
-  ) {
-    return res.status(400).json({ message: "Missing required fields" });
+// Health check endpoint
+app.get("/health", async (req, res) => {
+  try {
+    await pool.query("SELECT 1");
+    res.json({ status: "healthy", database: "connected" });
+  } catch (err) {
+    res.status(500).json({ status: "unhealthy", database: "disconnected" });
   }
-
-  const insertQuery = `
-    INSERT INTO products (product_name, brand_name, category, size, color, quantity, price)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `;
-
-  db.query(
-    insertQuery,
-    [product_name, brand_name, category, size, color, quantity, price],
-    (err, results) => {
-      if (err) {
-        console.error("Error inserting into database:", err);
-        return res.status(500).json({ message: "Error saving to database" });
-      }
-      res.json({ message: "Product saved successfully" });
-    }
-  );
 });
 
-app.listen(4000, () => console.log("Server running on port 4000"));
-
-// API Route to Fetch Data
-app.get("/get-products", (req, res) => {
-  const selectQuery = "SELECT * FROM products";
-
-  db.query(selectQuery, (err, results) => {
-    if (err) {
-      console.error("Error fetching data from database:", err);
-      return res.status(500).json({ message: "Error fetching data" });
+// Save order endpoint
+app.post("/save-order", async (req, res) => {
+  try {
+    const { product_name, quantity, price } = req.body;
+    if (!product_name || !quantity || !price) {
+      return res.status(400).json({ error: "Missing required fields" });
     }
-    res.json(results);
-  });
-});
 
-// API Route to Delete Data
-app.delete("/delete-product/:id", (req, res) => {
-  const productId = req.params.id;
-  const deleteQuery = "DELETE FROM products WHERE id = ?";
+    const [result] = await pool.query(
+      `
+      INSERT INTO products SET ?
+    `,
+      [
+        {
+          product_name: product_name.trim(),
+          brand_name: req.body.brand_name || "Unknown",
+          category: req.body.category || "Clothing",
+          size: req.body.size || "M",
+          color: req.body.color || "Unknown",
+          quantity: parseInt(quantity),
+          price: parseFloat(price),
+          status: req.body.status || "Pending",
+        },
+      ]
+    );
 
-  db.query(deleteQuery, [productId], (err, results) => {
-    if (err) {
-      console.error("Error deleting product:", err);
-      return res.status(500).json({ message: "Error deleting product" });
-    }
-    res.json({ message: "Product deleted successfully" });
-  });
-});
-
-// API Route for Bulk Updates
-app.post("/update-products", (req, res) => {
-  const { updates } = req.body;
-
-  if (!updates || !Array.isArray(updates)) {
-    return res.status(400).json({ message: "Invalid update data" });
-  }
-
-  let completedUpdates = 0;
-  const errors = [];
-
-  updates.forEach((update) => {
-    const { id, changes } = update;
-    const updateQuery = `UPDATE products SET ? WHERE id = ?`;
-
-    db.query(updateQuery, [changes, id], (err, results) => {
-      if (err) {
-        console.error(`Error updating product ${id}:`, err);
-        errors.push(id);
-      } else {
-        completedUpdates++;
-      }
-
-      // When all updates are processed
-      if (completedUpdates + errors.length === updates.length) {
-        if (errors.length > 0) {
-          res.status(207).json({
-            message: `Updated ${completedUpdates} products, failed on ${errors.length}`,
-            failedUpdates: errors,
-          });
-        } else {
-          res.json({
-            message: `Successfully updated ${completedUpdates} products`,
-          });
-        }
-      }
+    res.json({
+      success: true,
+      order: {
+        id: result.insertId,
+        ...req.body,
+      },
     });
-  });
-});
-
-// Save Initial Order
-app.post("/save-order", (req, res) => {
-  const orderData = req.body;
-  orderData.status = "Pending"; // Default status
-
-  const query = `
-    INSERT INTO orders 
-    (product_name, brand_name, category, size, color, quantity, price, date_of_order, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `;
-
-  db.query(
-    query,
-    [
-      orderData.product_name,
-      orderData.brand_name,
-      orderData.category,
-      orderData.size,
-      orderData.color,
-      orderData.quantity,
-      orderData.price,
-      orderData.date_of_order,
-      orderData.status,
-    ],
-    (err, results) => {
-      if (err) {
-        console.error("Error saving order:", err);
-        return res.status(500).json({ message: "Error saving order" });
-      }
-      res.json({
-        message: "Order saved successfully",
-        orderId: results.insertId,
-      });
-    }
-  );
-});
-
-// Finalize Order
-app.post("/finalize-order", (req, res) => {
-  const { orderId } = req.body;
-
-  const query = `
-    UPDATE orders 
-    SET status = 'Completed'
-    WHERE id = ?
-  `;
-
-  db.query(query, [orderId], (err, results) => {
-    if (err) {
-      console.error("Error finalizing order:", err);
-      return res.status(500).json({ message: "Error finalizing order" });
-    }
-    res.json({ message: "Order finalized successfully" });
-  });
-});
-
-// Get Orders for Orders Page
-app.get("/get-orders", (req, res) => {
-  const query = "SELECT * FROM orders ORDER BY date_of_order DESC";
-
-  db.query(query, (err, results) => {
-    if (err) {
-      console.error("Error fetching orders:", err);
-      return res.status(500).json({ message: "Error fetching orders" });
-    }
-    res.json(results);
-  });
-});
-
-// Update this endpoint to match
-app.post("/save-order", (req, res) => {
-  const orderData = req.body;
-
-  // Validate required fields
-  if (!orderData.product_name || !orderData.quantity || !orderData.price) {
-    return res.status(400).json({ error: "Missing required fields" });
+  } catch (err) {
+    console.error("Save error:", err);
+    res.status(500).json({ error: "Database error", details: err.message });
   }
+});
 
-  const query = `
-    INSERT INTO products 
-    (product_name, brand_name, category, size, color, quantity, price, date_of_order, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `;
+// Get products endpoint
+app.get("/get-products", async (req, res) => {
+  try {
+    const [rows] = await pool.query("SELECT * FROM products ORDER BY id DESC");
+    res.json(rows);
+  } catch (err) {
+    console.error("Fetch error:", err);
+    res.status(500).json({ error: "Database error", details: err.message });
+  }
+});
 
-  db.query(
-    query,
-    [
-      orderData.product_name,
-      orderData.brand_name || "Unknown",
-      orderData.category || "Clothing",
-      orderData.size || "M",
-      orderData.color || "Unknown",
-      orderData.quantity,
-      orderData.price,
-      orderData.date_of_order || new Date().toISOString().split("T")[0],
-      orderData.status || "Pending",
-    ],
-    (err, results) => {
-      if (err) {
-        console.error("Database error:", err);
-        return res.status(500).json({ error: "Failed to save order" });
-      }
-      res.json({
-        message: "Order saved successfully",
-        orderId: results.insertId,
-      });
+// Delete product endpoint
+app.delete("/delete-product/:id", async (req, res) => {
+  try {
+    const [result] = await pool.query("DELETE FROM products WHERE id = ?", [
+      req.params.id,
+    ]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Product not found" });
     }
-  );
+
+    res.json({
+      success: true,
+      message: `Product ${req.params.id} deleted successfully`,
+    });
+  } catch (err) {
+    console.error("Delete error:", err);
+    res.status(500).json({ error: "Database error", details: err.message });
+  }
+});
+
+// Initialize and start server
+async function startServer() {
+  await initializeDatabase();
+  const PORT = 4000;
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+startServer().catch((err) => {
+  console.error("Server startup failed:", err);
+  process.exit(1);
 });

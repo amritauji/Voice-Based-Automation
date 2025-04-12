@@ -1,3 +1,4 @@
+// Navigation functionality
 const nav = document.querySelector(".nav"),
   searchIcon = document.querySelector("#searchIcon"),
   navOpenBtn = document.querySelector(".navOpenBtn"),
@@ -22,611 +23,361 @@ navCloseBtn.addEventListener("click", () => {
   nav.classList.remove("openNav");
 });
 
-// Enable delete for existing rows
-document.querySelectorAll(".delete-btn").forEach((button) => {
-  button.addEventListener("click", function () {
-    this.parentElement.parentElement.remove();
-  });
-});
-
-// Voice Recognition Logic
-if ("webkitSpeechRecognition" in window) {
-  const recognition = new webkitSpeechRecognition();
-  recognition.continuous = false;
-  recognition.interimResults = false;
-  recognition.lang = "en-US";
-
-  let capturedText = "";
-
-  function startListening() {
-    recognition.start();
-    console.log("Listening...");
-    document.getElementById("output").innerText = "Listening...";
-  }
-
-  recognition.onresult = (event) => {
-    capturedText = event.results[0][0].transcript.toLowerCase();
-    console.log("Captured:", capturedText);
-    document.getElementById("output").innerText = "Captured: " + capturedText;
-
-    const parsedData = parseSpeech(capturedText);
-    if (parsedData) {
-      document.getElementById("saveBtn").disabled = false;
-      document.getElementById("discardBtn").disabled = false;
-    }
-  };
-
-  recognition.onerror = (event) => {
-    console.error("Speech recognition error:", event.error);
-    document.getElementById("output").innerText = "Error: " + event.error;
-  };
-
-  function parseSpeech(text) {
-    const regex =
-      /(.+?) brand (.+?) category (.+?) size (.+?) colou?r (.+?) quantity (\d+|one|two|three|four|five|six|seven|eight|nine|ten) price (\d+(\.\d+)?)/;
-    const match = text.match(regex);
-
-    if (match) {
-      // Map the spoken category to a valid ENUM value
-      const categoryMap = {
-        "men's": "Men's",
-        mens: "Men's",
-        unisex: "Unisex",
-        "women's": "Women's",
-        womens: "Women's",
-      };
-
-      // Map the spoken size to a valid ENUM value
-      const sizeMap = {
-        s: "S",
-        small: "S",
-        m: "M",
-        medium: "M",
-        l: "L",
-        large: "L",
-        xl: "XL",
-        "extra large": "XL",
-      };
-
-      const category = categoryMap[match[3].toLowerCase()] || "Unisex"; // Default to 'Unisex' if no match
-      const size = sizeMap[match[4].toLowerCase()] || "M"; // Default to 'M' if no match
-
-      return {
-        product_name: match[1].trim(),
-        brand_name: match[2].trim(),
-        category: category, // Use the mapped category
-        size: size, // Use the mapped size
-        color: match[5].trim(),
-        quantity: parseInt(match[6]),
-        price: parseFloat(match[7]),
-      };
-    } else {
-      alert("Invalid format! Please follow the correct sequence.");
-      return null;
-    }
-  }
-
-  function saveText() {
-    if (!capturedText) return alert("No text to save!");
-
-    const parsedData = parseSpeech(capturedText);
-    if (!parsedData) return;
-
-    console.log("Parsed data:", parsedData); // Log the parsed data
-
-    fetch("http://localhost:4000/save-text", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(parsedData),
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        alert(data.message);
-        resetUI();
-      })
-      .catch((error) => {
-        console.error("Error:", error);
-        alert("Failed to save data. Check the console for details.");
-      });
-  }
-
-  function discardText() {
-    resetUI();
-  }
-
-  function resetUI() {
-    document.getElementById("output").innerText =
-      "Your speech will appear here...";
-    document.getElementById("saveBtn").disabled = true;
-    document.getElementById("discardBtn").disabled = true;
-    capturedText = "";
-  }
-
-  // Add event listeners
-  document
-    .getElementById("voiceOrderBtn")
-    .addEventListener("click", startListening);
-  document.getElementById("saveBtn").addEventListener("click", saveText);
-  document.getElementById("discardBtn").addEventListener("click", discardText);
-} else {
-  alert("Your browser does not support Speech Recognition.");
-}
-
-function fetchAndDisplayProducts() {
-  fetch("http://localhost:4000/get-products")
-    .then((response) => response.json())
-    .then((data) => {
-      const table = document.getElementById("clothingTable");
-      table.innerHTML = ""; // Clear existing rows
-
-      data.forEach((product) => {
-        const newRow = document.createElement("tr");
-        newRow.innerHTML = `
-          <td>${product.product_name}</td>
-          <td>${product.brand_name}</td>
-          <td>${product.category}</td>
-          <td>${product.size}</td>
-          <td>${product.color}</td>
-          <td>${product.quantity}</td>
-          <td>${product.price}</td>
-          <td>${product.date_of_order || "N/A"}</td>
-          <td><span class="status completed">Completed</span></td>
-          <td><button class="delete-btn">Delete</button></td>
-        `;
-        table.appendChild(newRow);
-
-        // Attach Delete Functionality to New Button
-        newRow
-          .querySelector(".delete-btn")
-          .addEventListener("click", function () {
-            deleteProduct(product.id); // Call a function to delete the product
-          });
-      });
-    })
-    .catch((error) => {
-      console.error("Error fetching products:", error);
-    });
-}
-
-// Function to delete a product
-function deleteProduct(productId) {
-  fetch(`http://localhost:4000/delete-product/${productId}`, {
-    method: "DELETE",
-  })
-    .then((response) => response.json())
-    .then((data) => {
-      alert(data.message);
-      fetchAndDisplayProducts(); // Refresh the table after deletion
-    })
-    .catch((error) => {
-      console.error("Error deleting product:", error);
-    });
-}
-
-// Fetch and display products when the page loads
-document.addEventListener("DOMContentLoaded", fetchAndDisplayProducts);
-// Export Table Function (CSV only)
-document.getElementById('exportTableBtn').addEventListener('click', exportToCSV);
-
-function exportToCSV() {
-  const rows = document.querySelectorAll("#clothingTable tr");
-  let csvContent = "data:text/csv;charset=utf-8,";
-  
-  // Add headers
-  const headers = [];
-  document.querySelectorAll("#clothingTable th").forEach(th => {
-    headers.push(th.textContent);
-  });
-  csvContent += headers.join(",") + "\r\n";
-  
-  // Add data rows
-  rows.forEach(row => {
-    const rowData = [];
-    row.querySelectorAll("td").forEach((cell, index) => {
-      if (index < 9) { // Skip the action column
-        rowData.push(cell.textContent);
-      }
-    });
-    csvContent += rowData.join(",") + "\r\n";
-  });
-  
-  // Create download link
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement("a");
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  link.setAttribute("href", encodedUri);
-  link.setAttribute("download", `orders_${timestamp}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-
-// Edit Table Functionality
-let isEditMode = false;
-let originalData = {};
-
-document.getElementById('editTableBtn').addEventListener('click', toggleEditMode);
-
-function toggleEditMode() {
-  isEditMode = !isEditMode;
-  const table = document.getElementById("clothingTable");
-  const editBtn = document.getElementById("editTableBtn");
-  
-  if (isEditMode) {
-    // Store original data
-    document.querySelectorAll("#clothingTable tr").forEach((row, rowIndex) => {
-      originalData[rowIndex] = {};
-      row.querySelectorAll("td:not(:last-child)").forEach((cell, cellIndex) => {
-        originalData[rowIndex][cellIndex] = cell.textContent;
-      });
-    });
-    
-    table.classList.add("editable");
-    editBtn.innerHTML = '<i class="uil uil-save"></i> Save Changes';
-    editBtn.classList.remove('edit-btn');
-    editBtn.classList.add('save-btn');
-    
-    // Make cells editable
-    document.querySelectorAll("#clothingTable td:not(:last-child)").forEach(cell => {
-      cell.contentEditable = true;
-      cell.style.backgroundColor = "#fffde7";
-    });
-  } else {
-    table.classList.remove("editable");
-    editBtn.innerHTML = '<i class="uil uil-edit"></i> Edit Table';
-    editBtn.classList.add('edit-btn');
-    editBtn.classList.remove('save-btn');
-    
-    // Make cells non-editable
-    document.querySelectorAll("#clothingTable td:not(:last-child)").forEach(cell => {
-      cell.contentEditable = false;
-      cell.style.backgroundColor = "";
-    });
-    
-    // Save changes to database
-    saveTableChanges();
-  }
-}
-
-function saveTableChanges() {
-  const rows = document.querySelectorAll("#clothingTable tr");
-  const updates = [];
-  
-  rows.forEach((row, rowIndex) => {
-    const rowData = {};
-    const cells = row.querySelectorAll("td:not(:last-child)");
-    
-    // Get product ID from data attribute (you'll need to add this when creating rows)
-    const productId = row.dataset.productId;
-    
-    cells.forEach((cell, cellIndex) => {
-      const columnName = getColumnName(cellIndex);
-      if (columnName && cell.textContent !== originalData[rowIndex][cellIndex]) {
-        rowData[columnName] = cell.textContent;
-      }
-    });
-    
-    if (Object.keys(rowData).length > 0 && productId) {
-      updates.push({ id: productId, changes: rowData });
-    }
-  });
-  
-  // Send updates to server
-  if (updates.length > 0) {
-    fetch('http://localhost:4000/update-products', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ updates })
-    })
-    .then(response => response.json())
-    .then(data => {
-      alert(data.message);
-      fetchAndDisplayProducts(); // Refresh the table
-    })
-    .catch(error => {
-      console.error('Error updating products:', error);
-      alert('Failed to save changes. Please try again.');
-      fetchAndDisplayProducts(); // Refresh to restore original data
-    });
-  } else {
-    alert('No changes detected.');
-  }
-}
-
-function getColumnName(index) {
-  const columns = [
-    'product_name', 'brand_name', 'category', 
-    'size', 'color', 'quantity', 'price', 
-    'date_of_order', 'status'
-  ];
-  return columns[index] || null;
-}
-
-// Update your fetchAndDisplayProducts function to include data-product-id
-function fetchAndDisplayProducts() {
-  fetch("http://localhost:4000/get-products")
-    .then((response) => response.json())
-    .then((data) => {
-      const table = document.getElementById("clothingTable");
-      table.innerHTML = ""; // Clear existing rows
-
-      data.forEach((product) => {
-        const newRow = document.createElement("tr");
-        newRow.dataset.productId = product.id; // Add product ID as data attribute
-        newRow.innerHTML = `
-          <td>${product.product_name}</td>
-          <td>${product.brand_name}</td>
-          <td>${product.category}</td>
-          <td>${product.size}</td>
-          <td>${product.color}</td>
-          <td>${product.quantity}</td>
-          <td>${product.price}</td>
-          <td>${product.date_of_order || "N/A"}</td>
-          <td><span class="status ${getStatusClass(product.status)}">${product.status || 'Pending'}</span></td>
-          <td><button class="delete-btn">Delete</button></td>
-        `;
-        table.appendChild(newRow);
-
-        // Attach Delete Functionality
-        newRow.querySelector(".delete-btn").addEventListener("click", function() {
-          deleteProduct(product.id);
-        });
-      });
-    })
-    .catch((error) => {
-      console.error("Error fetching products:", error);
-    });
-}
-
-function getStatusClass(status) {
-  switch(status?.toLowerCase()) {
-    case 'completed': return 'completed';
-    case 'pending': return 'pending';
-    case 'cancelled': return 'cancelled';
-    default: return 'pending';
-  }
-}
-
-// Modify your startListening function to add visual feedback
-function startListening() {
-  recognition.start();
-  console.log("Listening...");
-  document.getElementById("output").innerText = "Listening...";
-  document.querySelector(".voice-input-container").classList.add("listening");
-}
-
-// Modify your recognition.onresult to update the UI
-recognition.onresult = (event) => {
-  capturedText = event.results[0][0].transcript;
-  console.log("Captured:", capturedText);
-  document.getElementById("output").innerText = capturedText;
-  document.querySelector(".voice-input-container").classList.remove("listening");
-
-  const parsedData = parseSpeech(capturedText.toLowerCase());
-  if (parsedData) {
-    document.getElementById("saveBtn").disabled = false;
-    document.getElementById("discardBtn").disabled = false;
-  }
-};
-
-// Modify your recognition.onerror to handle UI updates
-recognition.onerror = (event) => {
-  console.error("Speech recognition error:", event.error);
-  document.getElementById("output").innerText = "Error: " + event.error;
-  document.querySelector(".voice-input-container").classList.remove("listening");
-};
-
-// Update your resetUI function
-function resetUI() {
-  document.getElementById("output").innerText = "Your speech will appear here...";
-  document.getElementById("saveBtn").disabled = true;
-  document.getElementById("discardBtn").disabled = true;
-  document.querySelector(".voice-input-container").classList.remove("listening");
-  capturedText = "";
-}
-
-
-// Voice Recognition Logic
+// Voice Order System
 let recognition;
-let capturedText = "";
-let currentOrder = null;
+let isListening = false;
+let timer;
+let timeLeft = 10;
+let ordersCount = 0;
+const MAX_ORDERS = 1000;
 
+// Initialize voice recognition
 function initVoiceRecognition() {
-  if ('webkitSpeechRecognition' in window) {
+  if ("webkitSpeechRecognition" in window) {
     recognition = new webkitSpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.lang = 'en-US';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
 
-    recognition.onstart = function() {
-      document.getElementById('output').textContent = "Listening...";
-      document.querySelector('.voice-section').classList.add('listening');
-    };
+    recognition.onresult = (event) => {
+      let interimTranscript = "";
+      let finalTranscript = "";
 
-    recognition.onresult = function(event) {
-      capturedText = event.results[0][0].transcript;
-      document.getElementById('output').textContent = capturedText;
-      document.querySelector('.voice-section').classList.remove('listening');
-      
-      currentOrder = parseSpeech(capturedText.toLowerCase());
-      if (currentOrder) {
-        document.getElementById('saveBtn').disabled = false;
-        document.getElementById('discardBtn').disabled = false;
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript;
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+
+      // Display what's being heard
+      const output = document.getElementById("output");
+      output.innerHTML = `
+        ${
+          interimTranscript
+            ? `<div class="interim">${interimTranscript}</div>`
+            : ""
+        }
+        ${
+          finalTranscript
+            ? `<div class="final">${finalTranscript}</div>`
+            : "Speak now..."
+        }
+      `;
+
+      // Process complete sentences
+      if (finalTranscript) {
+        processVoiceCommand(finalTranscript);
       }
     };
 
-    recognition.onerror = function(event) {
-      console.error('Speech recognition error:', event.error);
-      document.getElementById('output').textContent = 'Error: ' + event.error;
-      resetVoiceUI();
+    recognition.onerror = (event) => {
+      console.error("Recognition error:", event.error);
+      stopContinuousRecording();
+      document.getElementById("output").innerHTML += `
+        <div class="error">Error: ${event.error}</div>
+      `;
+    };
+
+    recognition.onend = () => {
+      if (isListening) {
+        recognition.start();
+      }
     };
   } else {
-    alert('Web Speech API is not supported in this browser');
+    alert("Web Speech API not supported in this browser");
   }
 }
 
-function parseSpeech(text) {
-  // Example: "Order 5 Nike t-shirts size large in blue for 2000 rupees"
-  const pattern = /order (\d+) (.+?) (?:size|for size) (.+?) (?:in|color) (.+?) (?:for|price) (\d+)/i;
-  const match = text.match(pattern);
+// Process voice commands
+function processVoiceCommand(transcript) {
+  console.log("Processing:", transcript);
 
-  if (match) {
-    return {
-      product_name: match[2].trim(),
-      brand_name: "Unknown", // You can modify this to capture brand if needed
-      category: "Clothing",
-      size: match[3].trim(),
-      color: match[4].trim(),
-      quantity: parseInt(match[1]),
-      price: parseFloat(match[5]),
-      date_of_order: new Date().toISOString().split('T')[0],
-      status: 'Pending'
-    };
+  // Normalize the input
+  const normalized = transcript
+    .toLowerCase()
+    .replace(/[.,]/g, "")
+    .replace(/\b(order|add|i want|please)\b/gi, "")
+    .trim();
+
+  // Extract components with more flexible matching
+  const quantityMatch = normalized.match(
+    /(\d+|one|two|three|four|five|six|seven|eight|nine|ten)/i
+  );
+  const sizeMatch = normalized.match(
+    /(xs|s|small|m|medium|l|large|xl|xlarge|extra large)/i
+  );
+  const colorMatch = normalized.match(
+    /(red|blue|green|black|white|yellow|pink|purple|orange)/i
+  );
+  const priceMatch = normalized.match(/(\d+)\s*(rs|₹|dollars|dollar|usd)?$/i);
+
+  // Extract product name by removing known patterns
+  let productName = normalized;
+  if (quantityMatch) productName = productName.replace(quantityMatch[0], "");
+  if (sizeMatch) productName = productName.replace(sizeMatch[0], "");
+  if (colorMatch) productName = productName.replace(colorMatch[0], "");
+  if (priceMatch) productName = productName.replace(priceMatch[0], "");
+  productName = productName.replace(/\s+/g, " ").trim();
+
+  // Convert word numbers to digits
+  const wordToNum = {
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+    six: 6,
+    seven: 7,
+    eight: 8,
+    nine: 9,
+    ten: 10,
+  };
+
+  const quantity = quantityMatch
+    ? wordToNum[quantityMatch[0].toLowerCase()] || parseInt(quantityMatch[0])
+    : 1;
+  const price = priceMatch ? parseFloat(priceMatch[1]) : 0;
+  const size = sizeMatch ? sizeMatch[0].charAt(0).toUpperCase() : "M";
+  const color = colorMatch ? colorMatch[0] : "Unknown";
+
+  // Check for minimum required fields
+  if (!productName || isNaN(quantity) || isNaN(price) || price <= 0) {
+    document.getElementById("output").innerHTML += `
+      <div class="error">
+        Couldn't understand. Try: "2 Nike t-shirts large blue 1200"<br>
+        Heard: Quantity: ${quantity}, Product: ${productName}, Price: ${price}
+      </div>
+    `;
+    return;
   }
-  
-  alert("Couldn't understand the order. Please try format: 'Order [quantity] [product] size [size] in [color] for [price]'");
+
+  const orderData = {
+    product_name: productName,
+    brand_name: extractBrand(productName) || "Unknown",
+    category: determineCategory(productName),
+    size: size,
+    color: color,
+    quantity: quantity,
+    price: price,
+    date_of_order: new Date().toISOString().split("T")[0],
+    status: "Pending",
+  };
+
+  saveOrderAutomatically(orderData);
+}
+
+// Helper functions
+function extractBrand(productName) {
+  const brands = ["nike", "adidas", "puma", "zara", "levis", "h&m"];
+  const lowerName = productName.toLowerCase();
+  for (const brand of brands) {
+    if (lowerName.includes(brand)) {
+      return brand.charAt(0).toUpperCase() + brand.slice(1);
+    }
+  }
   return null;
 }
 
-function saveVoiceOrder() {
-  if (!currentOrder) {
-    alert('No valid order to save!');
-    return;
-  }
+function determineCategory(productName) {
+  const lowerName = productName.toLowerCase();
+  if (/shirt|t-shirt|top|blouse/i.test(lowerName)) return "Tops";
+  if (/pant|jean|trouser/i.test(lowerName)) return "Bottoms";
+  if (/dress|gown/i.test(lowerName)) return "Dresses";
+  return "Clothing";
+}
 
-  fetch('http://localhost:4000/save-order', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(currentOrder)
-  })
-  .then(response => {
-    if (!response.ok) throw new Error('Failed to save order');
-    return response.json();
-  })
-  .then(data => {
-    alert(`Order saved successfully! ID: ${data.orderId}`);
-    resetVoiceUI();
-    fetchAndDisplayProducts();
-  })
-  .catch(error => {
-    console.error('Error saving order:', error);
-    alert('Failed to save order. Please check console for details.');
+// Save order to backend
+async function saveOrderAutomatically(orderData) {
+  const output = document.getElementById("output");
+  output.innerHTML += `<div class="processing">Processing order...</div>`;
+
+  try {
+    // First check if server is reachable
+    const healthCheck = await fetch("http://localhost:4000/health");
+    if (!healthCheck.ok) throw new Error("Server not responding");
+
+    // Then send the order
+    const response = await fetch("http://localhost:4000/save-order", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(orderData),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Server error");
+    }
+
+    const data = await response.json();
+    addOrderToTable(data.order);
+    output.innerHTML += `
+      <div class="success">
+        ✔ Order saved: ${orderData.quantity} ${orderData.product_name} (₹${orderData.price})
+      </div>
+    `;
+  } catch (error) {
+    console.error("Save error:", error);
+    output.innerHTML += `
+      <div class="error">
+        ✖ Error: ${error.message}<br>
+        ${error.message.includes("fetch") ? "Check if server is running" : ""}
+      </div>
+    `;
+
+    // Only retry for network errors
+    if (error.message.includes("fetch")) {
+      setTimeout(() => saveOrderAutomatically(orderData), 3000);
+    }
+  }
+}
+
+// Add order to table
+function addOrderToTable(order) {
+  const table = document.getElementById("clothingTable");
+  const newRow = document.createElement("tr");
+  newRow.dataset.productId = order.id;
+
+  newRow.innerHTML = `
+    <td>${order.product_name}</td>
+    <td>${order.brand_name}</td>
+    <td>${order.category}</td>
+    <td>${order.size}</td>
+    <td>${order.color}</td>
+    <td>${order.quantity}</td>
+    <td>₹${order.price}</td>
+    <td>${order.date_of_order}</td>
+    <td><span class="status ${order.status.toLowerCase()}">${
+    order.status
+  }</span></td>
+    <td><button class="delete-btn">Delete</button></td>
+  `;
+
+  table.insertBefore(newRow, table.firstChild);
+  newRow.querySelector(".delete-btn").addEventListener("click", () => {
+    deleteProduct(order.id);
   });
 }
 
-function resetVoiceUI() {
-  document.getElementById('output').textContent = 'Your speech will appear here...';
-  document.getElementById('saveBtn').disabled = true;
-  document.getElementById('discardBtn').disabled = true;
-  capturedText = "";
-  currentOrder = null;
+// Fetch and display products
+async function fetchAndDisplayProducts() {
+  try {
+    const response = await fetch("http://localhost:4000/get-products");
+    if (!response.ok) throw new Error("Failed to fetch products");
+
+    const data = await response.json();
+    const table = document.getElementById("clothingTable");
+    table.innerHTML = "";
+
+    data.forEach((product) => {
+      const newRow = document.createElement("tr");
+      newRow.dataset.productId = product.id;
+      newRow.innerHTML = `
+        <td>${product.product_name}</td>
+        <td>${product.brand_name}</td>
+        <td>${product.category}</td>
+        <td>${product.size}</td>
+        <td>${product.color}</td>
+        <td>${product.quantity}</td>
+        <td>₹${product.price}</td>
+        <td>${product.date_of_order}</td>
+        <td><span class="status ${getStatusClass(product.status)}">${
+        product.status
+      }</span></td>
+        <td><button class="delete-btn">Delete</button></td>
+      `;
+      table.appendChild(newRow);
+      newRow.querySelector(".delete-btn").addEventListener("click", () => {
+        deleteProduct(product.id);
+      });
+    });
+  } catch (error) {
+    console.error("Error fetching products:", error);
+  }
+}
+
+// Delete product
+async function deleteProduct(productId) {
+  if (confirm("Are you sure you want to delete this product?")) {
+    try {
+      const response = await fetch(
+        `http://localhost:4000/delete-product/${productId}`,
+        {
+          method: "DELETE",
+        }
+      );
+      if (!response.ok) throw new Error("Failed to delete product");
+
+      const data = await response.json();
+      alert(data.message);
+      fetchAndDisplayProducts();
+    } catch (error) {
+      console.error("Error deleting product:", error);
+    }
+  }
+}
+
+// Helper function for status class
+function getStatusClass(status) {
+  const statusLower = (status || "").toLowerCase();
+  if (statusLower === "completed") return "completed";
+  if (statusLower === "cancelled") return "cancelled";
+  return "pending";
+}
+
+// Start/Stop Recording
+function startContinuousRecording() {
+  if (!recognition) initVoiceRecognition();
+  isListening = true;
+  recognition.start();
+  document.getElementById("voiceOrderBtn").innerHTML =
+    '<i class="uil uil-microphone-slash"></i> Stop Recording';
+  document.getElementById("voiceOrderBtn").classList.add("listening");
+  document.getElementById("voiceTimer").style.display = "flex";
+  document.querySelector(".voice-section").classList.add("listening");
+  updateTimerDisplay();
+  timer = setInterval(handleTimer, 1000);
+}
+
+function stopContinuousRecording() {
+  isListening = false;
   if (recognition) recognition.stop();
+  document.getElementById("voiceOrderBtn").innerHTML =
+    '<i class="uil uil-microphone"></i> Start Recording';
+  document.getElementById("voiceOrderBtn").classList.remove("listening");
+  document.getElementById("voiceTimer").style.display = "none";
+  document.querySelector(".voice-section").classList.remove("listening");
+  clearInterval(timer);
+}
+
+function handleTimer() {
+  timeLeft--;
+  updateTimerDisplay();
+  if (timeLeft <= 0) {
+    timeLeft = 10;
+    ordersCount++;
+    document.getElementById("ordersCounter").textContent = ordersCount;
+    if (ordersCount >= MAX_ORDERS) {
+      stopContinuousRecording();
+      alert("Maximum order limit reached");
+    }
+  }
+}
+
+function updateTimerDisplay() {
+  document.getElementById("timerValue").textContent = timeLeft;
 }
 
 // Initialize when page loads
-document.addEventListener('DOMContentLoaded', function() {
-  // Initialize voice recognition
-  initVoiceRecognition();
-  
-  // Set up event listeners
-  document.getElementById('voiceOrderBtn').addEventListener('click', function() {
-    if (!recognition) initVoiceRecognition();
-    recognition.start();
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("voiceOrderBtn").addEventListener("click", () => {
+    if (isListening) stopContinuousRecording();
+    else startContinuousRecording();
   });
-  
-  document.getElementById('saveBtn').addEventListener('click', saveVoiceOrder);
-  document.getElementById('discardBtn').addEventListener('click', resetVoiceUI);
-  
-  // Load initial products
   fetchAndDisplayProducts();
 });
-
-// Save Table Order (for final submission)
-document.getElementById("saveTableBtn").addEventListener("click", () => {
-  fetch("http://localhost:4000/finalize-order", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status: "Completed" })
-  })
-  .then(response => response.json())
-  .then(data => {
-    alert("Order finalized and saved to Orders page!");
-    document.getElementById("saveTableBtn").style.display = "none";
-    // Redirect to orders page or refresh data
-    window.location.href = "orders.html"; // Create this page
-  })
-  .catch(error => {
-    console.error("Error finalizing order:", error);
-    alert("Failed to finalize order");
-  });
-});
-
-// Reset Voice UI
-function resetVoiceUI() {
-  document.getElementById("output").innerText = "Your speech will appear here...";
-  document.getElementById("saveVoiceBtn").disabled = true;
-  document.getElementById("discardVoiceBtn").disabled = true;
-  currentOrder = null;
-}
-
-document.addEventListener("DOMContentLoaded", function () {
-  // Initialize voice recognition
-  if ("webkitSpeechRecognition" in window) {
-    recognition = new webkitSpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.lang = "en-US";
-
-    // Set up event listeners
-    recognition.onresult = function (event) {
-      const transcript = event.results[0][0].transcript;
-      document.getElementById("output").textContent = transcript;
-      document.getElementById("saveVoiceBtn").disabled = false;
-      document.getElementById("discardVoiceBtn").disabled = false;
-    };
-
-    recognition.onerror = function (event) {
-      console.error("Voice recognition error", event.error);
-    };
-  }
-
-  // Set up button listeners
-  document
-    .getElementById("voiceOrderBtn")
-    .addEventListener("click", function () {
-      recognition.start();
-      document.getElementById("output").textContent = "Listening...";
-    });
-
-  document
-    .getElementById("saveVoiceBtn")
-    .addEventListener("click", saveVoiceOrder);
-  document
-    .getElementById("discardVoiceBtn")
-    .addEventListener("click", function () {
-      document.getElementById("output").textContent =
-        "Your speech will appear here...";
-      this.disabled = true;
-      document.getElementById("saveVoiceBtn").disabled = true;
-    });
-});
-
-function saveVoiceOrder() {
-  const text = document.getElementById("output").textContent;
-  if (text === "Your speech will appear here..." || text === "Listening...") {
-    alert("No voice input to save!");
-    return;
-  }
-
-  // Parse and save the order
-  const orderData = parseSpeech(text);
-  if (orderData) {
-    // Add your save logic here
-    console.log("Saving order:", orderData);
-    alert("Order saved successfully!");
-    document.getElementById("saveVoiceBtn").disabled = true;
-    document.getElementById("discardVoiceBtn").disabled = true;
-  }
-}
