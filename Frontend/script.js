@@ -381,3 +381,175 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   fetchAndDisplayProducts();
 });
+
+
+// Export to CSV functionality
+document.getElementById("exportTableBtn").addEventListener("click", exportToCSV);
+
+function exportToCSV() {
+  try {
+    // Get table data
+    const rows = document.querySelectorAll("#clothingTable tr");
+    let csvContent = "data:text/csv;charset=utf-8,";
+    
+    // Add headers
+    const headers = [];
+    document.querySelectorAll("#clothingTable th").forEach(th => {
+      headers.push(th.textContent.replace(" (Rs)", "")); // Clean up header
+    });
+    csvContent += headers.join(",") + "\r\n";
+
+    // Add data rows
+    rows.forEach(row => {
+      const rowData = [];
+      row.querySelectorAll("td").forEach((cell, index) => {
+        if (index < 9) { // Skip action column
+          let text = cell.textContent;
+          // Remove ₹ symbol from price
+          if (index === 6) text = text.replace("₹", "");
+          // Handle commas in text
+          if (text.includes(",")) text = `"${text}"`;
+          rowData.push(text);
+        }
+      });
+      csvContent += rowData.join(",") + "\r\n";
+    });
+
+    // Create download link
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `orders_${timestamp}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Show success message
+    document.getElementById("output").innerHTML += `
+      <div class="success">✔ CSV exported successfully</div>
+    `;
+  } catch (error) {
+    console.error("Export error:", error);
+    document.getElementById("output").innerHTML += `
+      <div class="error">✖ Export failed: ${error.message}</div>
+    `;
+  }
+}
+
+
+// Table Editing
+let isEditMode = false;
+let originalData = {};
+
+document.getElementById("editTableBtn").addEventListener("click", toggleEditMode);
+
+function toggleEditMode() {
+  isEditMode = !isEditMode;
+  const table = document.getElementById("clothingTable");
+  const editBtn = document.getElementById("editTableBtn");
+  const saveBtn = document.getElementById("saveTableBtn");
+
+  if (isEditMode) {
+    // Store original data
+    originalData = {};
+    document.querySelectorAll("#clothingTable tr").forEach((row, rowIndex) => {
+      originalData[rowIndex] = {};
+      row.querySelectorAll("td:not(:last-child)").forEach((cell, cellIndex) => {
+        originalData[rowIndex][cellIndex] = cell.textContent;
+      });
+    });
+
+    // Update UI
+    table.classList.add("editable");
+    editBtn.style.display = "none";
+    saveBtn.style.display = "inline-block";
+
+    // Make cells editable
+    document.querySelectorAll("#clothingTable td:not(:last-child)").forEach(cell => {
+      cell.contentEditable = true;
+      cell.style.backgroundColor = "#fffde7";
+      cell.style.border = "1px solid #ddd";
+    });
+  } else {
+    // Revert UI
+    table.classList.remove("editable");
+    editBtn.style.display = "inline-block";
+    saveBtn.style.display = "none";
+
+    // Make cells non-editable
+    document.querySelectorAll("#clothingTable td:not(:last-child)").forEach(cell => {
+      cell.contentEditable = false;
+      cell.style.backgroundColor = "";
+      cell.style.border = "";
+    });
+  }
+}
+
+// Save edited table
+document.getElementById("saveTableBtn").addEventListener("click", saveTableChanges);
+
+async function saveTableChanges() {
+  const output = document.getElementById("output");
+  output.innerHTML += `<div class="processing">Saving changes...</div>`;
+  
+  try {
+    const rows = document.querySelectorAll("#clothingTable tr");
+    const updates = [];
+
+    // Collect changes
+    rows.forEach((row, rowIndex) => {
+      const rowData = {};
+      const cells = row.querySelectorAll("td:not(:last-child)");
+      const productId = row.dataset.productId;
+
+      cells.forEach((cell, cellIndex) => {
+        const columnName = getColumnName(cellIndex);
+        const newValue = cell.textContent.trim();
+        
+        if (columnName && newValue !== originalData[rowIndex][cellIndex]) {
+          rowData[columnName] = newValue;
+        }
+      });
+
+      if (Object.keys(rowData).length > 0 && productId) {
+        updates.push({ id: productId, changes: rowData });
+      }
+    });
+
+    if (updates.length > 0) {
+      const response = await fetch("http://localhost:4000/update-products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ updates })
+      });
+
+      if (!response.ok) throw new Error("Failed to save changes");
+      
+      const data = await response.json();
+      output.innerHTML += `
+        <div class="success">✔ ${data.message}</div>
+      `;
+    } else {
+      output.innerHTML += `
+        <div class="warning">No changes detected</div>
+      `;
+    }
+  } catch (error) {
+    console.error("Save changes error:", error);
+    output.innerHTML += `
+      <div class="error">✖ Error saving changes: ${error.message}</div>
+    `;
+  } finally {
+    toggleEditMode(); // Exit edit mode
+    fetchAndDisplayProducts(); // Refresh table
+  }
+}
+
+function getColumnName(index) {
+  const columns = [
+    'product_name', 'brand_name', 'category', 'size', 
+    'color', 'quantity', 'price', 'date_of_order', 'status'
+  ];
+  return columns[index];
+}

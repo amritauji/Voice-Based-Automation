@@ -139,3 +139,45 @@ startServer().catch((err) => {
   console.error("Server startup failed:", err);
   process.exit(1);
 });
+
+
+
+// Update products endpoint
+app.post("/update-products", async (req, res) => {
+  try {
+    const updates = req.body.updates;
+    if (!updates || !Array.isArray(updates)) {
+      return res.status(400).json({ error: "Invalid updates format" });
+    }
+
+    let updatedCount = 0;
+    
+    // Process each update
+    for (const update of updates) {
+      const { id, changes } = update;
+      if (!id || !changes || typeof changes !== 'object') continue;
+      
+      const setClause = Object.keys(changes).map(key => `${key} = ?`).join(', ');
+      const values = Object.values(changes);
+      values.push(id);
+
+      await pool.query(
+        `UPDATE products SET ${setClause} WHERE id = ?`,
+        values
+      );
+      updatedCount++;
+    }
+
+    res.json({
+      success: true,
+      message: `Updated ${updatedCount} product(s)`,
+      updated: updatedCount
+    });
+  } catch (err) {
+    console.error("Update error:", err);
+    res.status(500).json({ 
+      error: "Database error", 
+      details: err.message 
+    });
+  }
+});
